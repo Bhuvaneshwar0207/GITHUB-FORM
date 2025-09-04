@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Search Page — Formspree demo</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --accent: #2563eb;
+      --muted: #6b7280;
+    }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg), #eef2ff 60%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .container {
+      background: var(--card);
+      width: 100%;
+      max-width: 720px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(20,20,50,0.08);
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 1.25rem;
+      color: #0f172a;
+    }
+    p.lead {
+      margin: 0 0 18px 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    form.search-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-input {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #e6eefc;
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+
+    .search-input input[type="text"] {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .preview {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .preview strong { color: #0b1220; }
+
+    .message {
+      margin-top: 12px;
+      font-size: 0.95rem;
+    }
+    .success { color: #065f46; }
+    .error { color: #7f1d1d; }
+    .small {
+      display:block;
+      margin-top:8px;
+      color:#9ca3af;
+      font-size:0.85rem;
+    }
+
+    /* small responsive tweak */
+    @media (max-width:420px){
+      .search-input { padding: 8px; }
+      .btn { padding: 8px 10px; font-size:0.95rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container" role="main">
+    <h1>Search</h1>
+    <p class="lead">Type a query below — you'll see it live and can submit it (sent via Formspree).</p>
+
+    <!-- Replace the action URL with your Formspree endpoint: https://formspree.io/f/YOUR_FORMSPREE_ID -->
+    <form id="searchForm" class="search-form" method="POST" action="https://formspree.io/f/YOUR_FORMSPREE_ID">
+      <label class="search-input" aria-label="Search input">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M21 21l-4.35-4.35" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="11" cy="11" r="6" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <!-- Name must be present so Formspree includes it -->
+        <input id="queryInput" name="search_query" type="text" placeholder="Search anything (e.g. 'cars', 'recipes')" autocomplete="off" required />
+      </label>
+
+      <!-- Optional hidden fields for Formspree behavior -->
+      <input type="hidden" name="_subject" value="New site search submission" />
+      <input type="hidden" name="_language" value="en" />
+
+      <button id="submitBtn" class="btn" type="submit">Send</button>
+    </form>
+
+    <div class="preview" aria-live="polite">
+      Live preview: <strong id="livePreview">—</strong>
+      <span class="small">Your typed query appears here while you type. Submitting will send the query to Formspree.</span>
+    </div>
+
+    <div id="status" class="message" role="status" aria-live="polite"></div>
+
+    <p class="small" style="margin-top:12px">Tip: To use Formspree, create a free form at <em>formspree.io</em>, copy the form endpoint (looks like <code>https://formspree.io/f/abc123</code>) and paste it into the form <code>action</code> above.</p>
+  </main>
+
+  <script>
+    // Live preview of typed letters
+    const input = document.getElementById('queryInput');
+    const preview = document.getElementById('livePreview');
+    const form = document.getElementById('searchForm');
+    const status = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+
+    input.addEventListener('input', () => {
+      const text = input.value.trim();
+      preview.textContent = text.length ? text : '—';
+      // Optionally enable/disable submit based on length
+      submitBtn.disabled = !text.length;
+    });
+
+    // Optional: AJAX submit so page doesn't navigate away (uses Formspree JSON API).
+    // If you prefer the browser to navigate to Formspree's default thank-you page, remove this event listener.
+    form.addEventListener('submit', async (e) => {
+      // Prevent the default form navigation — we'll post via fetch to Formspree.
+      e.preventDefault();
+
+      const endpoint = form.action; // should be the https://formspree.io/f/ID
+      if (!endpoint || endpoint.includes('YOUR_FORMSPREE_ID')) {
+        status.innerHTML = '<span class="error">Please replace the action URL with your Formspree endpoint (see instructions above).</span>';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      status.textContent = 'Sending...';
+
+      const data = {
+        search_query: input.value,
+        _subject: form.querySelector('input[name="_subject"]')?.value || ''
+      };
+
+      try {
+        // Formspree accepts application/json POST to the /f/{id} endpoint
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          status.innerHTML = '<span class="success">Thanks — your search has been submitted!</span>';
+          form.reset();
+          preview.textContent = '—';
+        } else {
+          // If the endpoint returns errors, display a friendly message
+          const body = await res.json().catch(() => ({}));
+          const errMsg = body?.error || 'Submission failed. Check your Formspree settings or the endpoint URL.';
+          status.innerHTML = '<span class="error">' + errMsg + '</span>';
+        }
+      } catch (err) {
+        status.innerHTML = '<span class="error">Network error: ' + (err.message || 'unknown') + '</span>';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    // initial state
+    submitBtn.disabled = true;
+  </script>
+</body>
+</html>
